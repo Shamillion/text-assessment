@@ -8,26 +8,35 @@ import Data
 import Data.Aeson (eitherDecode)
 import Lib
 import Network.HTTP.Simple
-    ( parseRequest_, getResponseBody, httpLBS )
+    ( parseRequest_, getResponseBody, httpLBS, HttpException )
 import Servant (Capture, Get, Handler, JSON, (:>), Server, Proxy (..), Application, serve)
 import Control.Monad.IO.Class (liftIO)
+import Control.Concurrent (threadDelay)
 
 type API =
   Capture "text" String
-    :> Get '[JSON] (Either String Result)
+    :> Get '[JSON] (Either String Result)           -- <-- Change to Result
 
-handler :: Configuration -> String -> Handler (Either String Result)
-handler conf text = do
-  let req = parseRequest_ $ url conf ++ text
-  ans <- eitherDecode . getResponseBody <$> httpLBS req
+handler :: Url -> String -> Handler (Either String Result)  -- <-- try-catch
+handler (Url scr) text = do
+  resp <- httpLBS . parseRequest_ $ scr ++ text
+  let ans = eitherDecode $ getResponseBody resp
   _ <- liftIO $ print ans 
   pure $ mkResult <$> ans
+  -- where
+  --   errorProcessing err  = do
+  --     _ <- liftIO $ do
+  --                     print (err :: HttpException)
+  --                     putStrLn "Connection Failure"
+  --                     putStrLn "Trying to set a connection... "
+  --     threadDelay 1000000
+  --     handler (Url scr) text
 
 api :: Proxy API
 api = Proxy
 
-server :: Configuration -> Server API
+server :: Url -> Server API
 server = handler 
 
-app :: Configuration -> Application
+app :: Url -> Application
 app = serve api . server  

@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Config (Configuration(..), readConfigFile) where
+module Config where
 
 import Data.Aeson (FromJSON)
 import Data.Yaml (decodeFileEither)
@@ -10,10 +10,14 @@ import GHC.Generics (Generic)
 import System.Exit (die)
 
 data Configuration = Configuration
-  { url :: String,
-    serverPort :: Int
+  { url :: Url,
+    serverPorts :: [Int]
   }
   deriving (Show, Generic, FromJSON)
+
+newtype Url = Url String
+  deriving (Show, Generic, FromJSON)
+
 
 readConfigFile :: IO Configuration
 readConfigFile = do
