@@ -11,13 +11,15 @@ import System.Exit (die)
 
 data Configuration = Configuration
   { url :: Url,
-    serverPorts :: [Int]
+    serverPorts :: [ServerPort]
   }
   deriving (Show, Generic, FromJSON)
 
 newtype Url = Url String
   deriving (Show, Generic, FromJSON)
 
+newtype ServerPort = ServerPort Int
+  deriving (Show, Generic, FromJSON)
 
 readConfigFile :: IO Configuration
 readConfigFile = do

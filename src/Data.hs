@@ -5,17 +5,15 @@ module Data where
 
 import Data.Aeson
   ( FromJSON,
-    ToJSON
+    ToJSON,
   )
 import GHC.Generics (Generic)
-
 
 data Result = Result
   { grade :: Int,
     errors :: Errors
   }
   deriving (Show, Generic, ToJSON)
-
 
 newtype Errors = Errors [Error]
   deriving (Show, Generic, FromJSON, ToJSON)

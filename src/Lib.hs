@@ -1,8 +1,7 @@
 module Lib where
 
-import Data ( Errors(..), Result(..) )
+import Data (Errors (..), Result (..))
 import System.Exit (die)
-
 
 mkResult :: Errors -> Result
 mkResult (Errors ls) =
@@ -13,6 +12,7 @@ mkResult (Errors ls) =
         }
 
 checkList :: [a] -> IO [a]
-checkList ls = if null ls
-  then die "At least one port is required! Check out config.yaml!" 
-  else pure ls   
+checkList ls =
+  if null ls
+    then die "At least one port is required! Check out config.yaml!"
+    else pure ls

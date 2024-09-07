@@ -3,13 +3,13 @@
 
 module Server where
 
-import Config
+import Config (ServerPort (..), Url (..))
 import Control.Concurrent (threadDelay)
 import Control.Exception (try)
 import Control.Monad.IO.Class (liftIO)
-import Data
+import Data (Result)
 import Data.Aeson (eitherDecode)
-import Lib
+import Lib (mkResult)
 import Network.HTTP.Simple
   ( HttpException,
     getResponseBody,
@@ -20,11 +20,11 @@ import Servant (Application, Capture, Get, Handler, JSON, Proxy (..), Server, se
 
 type API =
   Capture "text" String
-    :> Get '[JSON] Result 
+    :> Get '[JSON] Result
 
-handler :: Url -> String -> Handler Result 
-handler (Url scr) text = do
-  eitherResp <- liftIO . try . httpLBS . parseRequest_ $ scr ++ text
+handler :: Url -> ServerPort -> String -> Handler Result
+handler ul@(Url src) sp@(ServerPort port) text = do
+  eitherResp <- liftIO . try . httpLBS . parseRequest_ $ src ++ text
   _ <- liftIO $ print eitherResp
   case eitherResp of
     Left e -> processingHttpError e
@@ -32,31 +32,30 @@ handler (Url scr) text = do
       let eitherObj = eitherDecode $ getResponseBody resp
       _ <- liftIO $ print eitherObj
       case eitherObj of
-         Left e -> processingDecodeError e
-         Right obj -> pure . mkResult $ obj     
+        Left e -> processingDecodeError e
+        Right obj -> pure . mkResult $ obj
   where
+    printMessage str = putStrLn $ mconcat ["On port ", show port, ": ", str]
     processingHttpError err = do
       _ <- liftIO $ do
         print (err :: HttpException)
-        putStrLn "Connection Failure"
-        putStrLn "Trying to set a connection... "
+        printMessage "Connection Failure"
+        printMessage "Trying to set a connection... "
         threadDelay 1000000
-      handler (Url scr) text
+      handler ul sp text
     processingDecodeError err = do
       _ <- liftIO $ do
         print err
-        putStrLn "Decode error"
-        putStrLn "Trying to set a connection... "
+        printMessage "Decode error"
+        printMessage "Trying again... "
         threadDelay 1000000
-      handler (Url scr) text   
-
---undefined
+      handler ul sp text
 
 api :: Proxy API
 api = Proxy
 
-server :: Url -> Server API
+server :: Url -> ServerPort -> Server API
 server = handler
 
-app :: Url -> Application
-app = serve api . server
+app :: Url -> ServerPort -> Application
+app src = serve api . server src 
