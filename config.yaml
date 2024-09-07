@@ -1,0 +1,14 @@
+#Configuration file for the text-assessment
+#Fill up your values
+---
+
+url: https://speller.yandex.net/services/spellservice.json/checkText?text=
+serverPorts: 
+- 8080
+- 4200  
+- 4020 
+# - 4000 
+# - 8000
+# - any port
+#   . . .     
+# - any port

@@ -4,39 +4,59 @@
 module Server where
 
 import Config
+import Control.Concurrent (threadDelay)
+import Control.Exception (try)
+import Control.Monad.IO.Class (liftIO)
 import Data
 import Data.Aeson (eitherDecode)
 import Lib
 import Network.HTTP.Simple
-    ( parseRequest_, getResponseBody, httpLBS, HttpException )
-import Servant (Capture, Get, Handler, JSON, (:>), Server, Proxy (..), Application, serve)
-import Control.Monad.IO.Class (liftIO)
-import Control.Concurrent (threadDelay)
+  ( HttpException,
+    getResponseBody,
+    httpLBS,
+    parseRequest_,
+  )
+import Servant (Application, Capture, Get, Handler, JSON, Proxy (..), Server, serve, (:>))
 
 type API =
   Capture "text" String
-    :> Get '[JSON] (Either String Result)           -- <-- Change to Result
+    :> Get '[JSON] Result 
 
-handler :: Url -> String -> Handler (Either String Result)  -- <-- try-catch
+handler :: Url -> String -> Handler Result 
 handler (Url scr) text = do
-  resp <- httpLBS . parseRequest_ $ scr ++ text
-  let ans = eitherDecode $ getResponseBody resp
-  _ <- liftIO $ print ans 
-  pure $ mkResult <$> ans
-  -- where
-  --   errorProcessing err  = do
-  --     _ <- liftIO $ do
-  --                     print (err :: HttpException)
-  --                     putStrLn "Connection Failure"
-  --                     putStrLn "Trying to set a connection... "
-  --     threadDelay 1000000
-  --     handler (Url scr) text
+  eitherResp <- liftIO . try . httpLBS . parseRequest_ $ scr ++ text
+  _ <- liftIO $ print eitherResp
+  case eitherResp of
+    Left e -> processingHttpError e
+    Right resp -> do
+      let eitherObj = eitherDecode $ getResponseBody resp
+      _ <- liftIO $ print eitherObj
+      case eitherObj of
+         Left e -> processingDecodeError e
+         Right obj -> pure . mkResult $ obj     
+  where
+    processingHttpError err = do
+      _ <- liftIO $ do
+        print (err :: HttpException)
+        putStrLn "Connection Failure"
+        putStrLn "Trying to set a connection... "
+        threadDelay 1000000
+      handler (Url scr) text
+    processingDecodeError err = do
+      _ <- liftIO $ do
+        print err
+        putStrLn "Decode error"
+        putStrLn "Trying to set a connection... "
+        threadDelay 1000000
+      handler (Url scr) text   
+
+--undefined
 
 api :: Proxy API
 api = Proxy
 
 server :: Url -> Server API
-server = handler 
+server = handler
 
 app :: Url -> Application
-app = serve api . server  
+app = serve api . server
