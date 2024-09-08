@@ -25,29 +25,22 @@ type API =
 handler :: Url -> ServerPort -> String -> Handler Result
 handler ul@(Url src) sp@(ServerPort port) text = do
   eitherResp <- liftIO . try . httpLBS . parseRequest_ $ src ++ text
-  _ <- liftIO $ print eitherResp
   case eitherResp of
-    Left e -> processingHttpError e
+    Left e -> do
+      let err = show (e :: HttpException)
+      processingError err "Connection Failure" "Trying to set a connection... "
     Right resp -> do
       let eitherObj = eitherDecode $ getResponseBody resp
-      _ <- liftIO $ print eitherObj
       case eitherObj of
-        Left e -> processingDecodeError e
-        Right obj -> pure . mkResult $ obj
+        Left e -> processingError e "Decode error" "Trying again... "
+        Right obj -> do
+          _ <- liftIO $ printMessage "The request was processed successfully."
+          pure . mkResult $ obj
   where
     printMessage str = putStrLn $ mconcat ["On port ", show port, ": ", str]
-    processingHttpError err = do
+    processingError err msg1 msg2 = do
       _ <- liftIO $ do
-        print (err :: HttpException)
-        printMessage "Connection Failure"
-        printMessage "Trying to set a connection... "
-        threadDelay 1000000
-      handler ul sp text
-    processingDecodeError err = do
-      _ <- liftIO $ do
-        print err
-        printMessage "Decode error"
-        printMessage "Trying again... "
+        mapM_ printMessage [err, msg1, msg2]
         threadDelay 1000000
       handler ul sp text
 
@@ -58,4 +51,4 @@ server :: Url -> ServerPort -> Server API
 server = handler
 
 app :: Url -> ServerPort -> Application
-app src = serve api . server src 
+app src = serve api . server src

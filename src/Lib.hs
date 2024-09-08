@@ -1,5 +1,6 @@
 module Lib where
 
+import Config (ServerPort)
 import Data (Errors (..), Result (..))
 import System.Exit (die)
 
@@ -11,8 +12,9 @@ mkResult (Errors ls) =
           errors = Errors ls
         }
 
-checkList :: [a] -> IO [a]
-checkList ls =
+-- Checking the list of ports for the presence of elements
+checkServerPortList :: [ServerPort] -> IO [ServerPort]
+checkServerPortList ls =
   if null ls
     then die "At least one port is required! Check out config.yaml!"
     else pure ls
